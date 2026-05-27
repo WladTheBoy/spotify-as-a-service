@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────
+#  Playlist-as-a-Service — docker-compose.yml
+# ─────────────────────────────────────────────
+# Default: SQLite + in-memory cache (zero extra services)
+# Uncomment redis / postgres sections to use them.
+
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: playlist_api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist SQLite database between container restarts
+      - ./data:/app/data
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/data/playlist_service.db
+      # Uncomment to use Redis:
+      # USE_REDIS: "true"
+      # REDIS_URL: redis://redis:6379/0
+    depends_on: []
+      # Uncomment if using Redis:
+      # - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── Optional: Redis cache ──────────────────────────────────────────────
+  # Uncomment to enable Redis-backed caching
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: playlist_redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-server --save 60 1 --loglevel warning
+  #   restart: unless-stopped
+
+  # ── Optional: PostgreSQL (production DB) ──────────────────────────────
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: playlist_postgres
+  #   environment:
+  #     POSTGRES_USER: playlist
+  #     POSTGRES_PASSWORD: playlist
+  #     POSTGRES_DB: playlist_service
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
